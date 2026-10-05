@@ -11,6 +11,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data #pddata lives separately from container
 
+      # if there is no pgdata(means tables) - it goes to storage and creates table
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql # [from where] : [to where= default folder which image checks first time in initialisation]
+
 volumes:
   pgdata: #empty values means - use default
 
