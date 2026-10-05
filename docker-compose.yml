@@ -1,0 +1,18 @@
+services:
+  db:
+    #Version of postgres
+    image: postgres:16
+    environment: #In the first run dervice reads this env
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: notes_app
+    ports:
+      - "5432:5432" #port on my pc : port in container -> to reach it from outside
+    volumes:
+      - pgdata:/var/lib/postgresql/data #pddata lives separately from container
+
+volumes:
+  pgdata: #empty values means - use default
+
+
+
