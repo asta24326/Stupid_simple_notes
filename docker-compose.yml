@@ -2,10 +2,17 @@ services:
   db:
     #Version of postgres
     image: postgres:16
-    environment: #In the first run dervice reads this env
+    environment: #in the first run dervice reads this env
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: notes_app
+    healthcheck: #built-in mechanism chron to check db
+      test: ["CMD-SHELL", "pg_isready -U app -d notes"] 
+        #run cmd in container shell
+        #pg_iseready=postgres utility, check if server accepts connections
+      interval: 5s
+      timeout: 3s
+      retries: 10 #how may failes in a row to set status unhealthy
     ports:
       - "5432:5432" #port on my pc : port in container -> to reach it from outside
     volumes:

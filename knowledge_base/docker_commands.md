@@ -4,6 +4,22 @@ docker compose up -d
 compose=start all together
 -d = detach, start in the background
 
+# start containers with wait for healthy status
+docker compose up -d -- wait
+# syntax:
+--wait = don't return control until all services are healthy
+
+# command to check health through github ci
+docker compose exec -Y db psql -U app -d notes -tAc "SELECT 1"
+# syntax:
+-T = turn-off TTY(pseudoterminal), cuz in CI there is no terminal and exec can fail without -T
+-tAc "SELECT 1" = 
+	-t = tuples only, only data without headers
+	-A = unaligned by columns
+	-c = command
+	SELECT 1 = db query, that should return 1 if all good
+	After that CI check command return code, if 0 = healthy
+
 # Check containers status
 gocker compose ps
 # syntax:
