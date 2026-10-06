@@ -46,4 +46,16 @@ docket compose down -v
 # syntax:
 -v = flag "volumes" - clears all volumes
 
-# to be
+# start backend php container
+docker build -t notes-php-test ./backend
+# syntax:
+docker build = build image according to Dockerfile
+-t notes-php-test = --tag = give image a name/tag [notes-php-test]
+./backend = build context, folder where Dockerfile is
+
+# remove unused container
+docker rmi notes-php-test
+# syntax:
+rmi = remove image
+
+# to be continued...

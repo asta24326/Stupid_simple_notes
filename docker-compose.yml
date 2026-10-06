@@ -7,20 +7,37 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: notes_app
     healthcheck: #built-in mechanism chron to check db
-      test: ["CMD-SHELL", "pg_isready -U admin -d notes_app"] 
-        #run cmd in container shell
-        #pg_iseready=postgres utility, check if server accepts connections
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U admin -d notes_app"] 
+        # run cmd in container shell
+        # pg_iseready=postgres utility, check if server accepts connections
+        # -h = host, where to connect
       interval: 5s
       timeout: 3s
       retries: 10 #how may failes in a row to set status unhealthy
     ports:
       - "5432:5432" #port on my pc : port in container -> to reach it from outside
     volumes:
-      - pgdata:/var/lib/postgresql/data #pddata lives separately from container
+      - pgdata:/var/lib/postgresql/data #pgdata lives separately from container
 
       # if there is no pgdata(means tables) - it goes to storage and creates table
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql # [from where] : [to where= default folder which image checks first time in initialisation]
+  php:
+    build: ./backend # says to compose not to download image, but to build it from dockerfile located in ./backend
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: notes_app
+      DB_USER: admin
+      DB_PASSWORD: admin
+    volumes:
+      - ./backend:/var/www/html
+      # [folder in host]:[folder in container]
+    depends_on:
+      db:
+        condition: service_healthy
+    
 
+# volumes=tom, it's list of attached folders, - starts the list
 volumes:
   pgdata: #empty values means - use default
 
