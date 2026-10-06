@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  db-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start containers
+        run: docker compose up -d --wait
+
+      - name: Check database responds
+        run: docker compose exec -T db psql -U admin -d notes_app -tAc "SELECT 1"
+        
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
+
+
+
+# Syntax
+# name: CI = name of scenario in Actions folder
+# on: = when to start
+# pull_request, branches, [branches] = when opening where to check
+# jobs = list of tasks to run
+# runs-on = on which machine to run
+# steps -> name = name of the step in interface
+# uses = take ready action from cloud
+# run = run shell command
+# i f: always() = do step ALWAYS, even if previous steps failed, to clean anyway
