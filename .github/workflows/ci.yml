@@ -18,7 +18,7 @@ jobs:
         run: docker compose up -d --build --wait
 
       - name: Check database responds
-        run: docker compose exec -T db psql -U "$POSTGRES_USER" -d "${POSTGRES_DB}" -tAc "SELECT 1"
+        run: docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "${POSTGRES_DB}" -tAc "SELECT 1"'
 
       - name: Check PHP connects to database
         run: docker compose exec -T php php check_db.php
