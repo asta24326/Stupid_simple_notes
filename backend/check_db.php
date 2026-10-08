@@ -37,15 +37,13 @@ try {
   fetchColumn() = to take one value of the first column
   fetchAll() = to get all rows as array of arrays
   */
+  
   echo "Postgres: $version\n";
-
-  $notes = $pdo->query('SELECT * FROM notes')->fetchAll();
-  echo "Notes (" . count($notes) . "):\n";
-  echo json_encode($notes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), "\n";
+  $database = $pdo->query('SELECT current_database()')->fetchColumn();
+  echo "Connected to database: $database\n";
   /*  syntax:
-  json_encode = convert array to JSON-text
-  JSON_PRETTY_PRINT = beatifully with indents and tabs
-  JSON_UNESCAPED_UNICODE = not to convert to cyrillik to \u0431-sequence 
+  current_database() = SQL fucntion of Postgres, that returns db name ti which we're connected. There is no need for tables. Output will show notes_app, and we will see that connection is right. 
+  fetchColumn()
   */
 } catch (PDOException $e) {
   fwrite(STDERR, "DB error: " . $e->getMessage() . "\n"); 

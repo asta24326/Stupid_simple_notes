@@ -11,11 +11,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env from example
+        run: cp .env.example .env
+
       - name: Start containers
         run: docker compose up -d --build --wait
 
       - name: Check database responds
-        run: docker compose exec -T db psql -U admin -d notes_app -tAc "SELECT 1"
+        run: docker compose exec -T db psql -U "$POSTGRES_USER" -d "${POSTGRES_DB}" -tAc "SELECT 1"
 
       - name: Check PHP connects to database
         run: docker compose exec -T php php check_db.php

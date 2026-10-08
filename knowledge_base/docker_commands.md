@@ -58,4 +58,21 @@ docker rmi notes-php-test
 # syntax:
 rmi = remove image
 
+# Docker commands without compose
+docker ps -a
+# syntax:
+a = all, to show all containers
+
+docker start [container_name]
+
+docker logs [container_name]
+
+# get into container
+docker exec -it [container_name] bash
+# syntax:
+-it = i(interactive) t(tty pseudo terminal)
+bash = bash shell
+ / sh = if there is light alpine inside
+
+
 # to be continued...
