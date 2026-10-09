@@ -46,4 +46,33 @@ docket compose down -v
 # syntax:
 -v = flag "volumes" - clears all volumes
 
-# to be
+# start backend php container
+docker build -t notes-php-test ./backend
+# syntax:
+docker build = build image according to Dockerfile
+-t notes-php-test = --tag = give image a name/tag [notes-php-test]
+./backend = build context, folder where Dockerfile is
+
+# remove unused container
+docker rmi notes-php-test
+# syntax:
+rmi = remove image
+
+# Docker commands without compose
+docker ps -a
+# syntax:
+a = all, to show all containers
+
+docker start [container_name]
+
+docker logs [container_name]
+
+# get into container
+docker exec -it [container_name] bash
+# syntax:
+-it = i(interactive) t(tty pseudo terminal)
+bash = bash shell
+ / sh = if there is light alpine inside
+
+
+# to be continued...

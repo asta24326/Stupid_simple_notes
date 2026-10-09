@@ -11,12 +11,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env from example
+        run: cp .env.example .env
+
       - name: Start containers
-        run: docker compose up -d --wait
+        run: docker compose up -d --build --wait
 
       - name: Check database responds
-        run: docker compose exec -T db psql -U admin -d notes_app -tAc "SELECT 1"
+        run: docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "${POSTGRES_DB}" -tAc "SELECT 1"'
+
+      - name: Check PHP connects to database
+        run: docker compose exec -T php php check_db.php
         
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
       - name: Stop containers
         if: always()
         run: docker compose down -v
@@ -33,3 +43,4 @@ jobs:
 # uses = take ready action from cloud
 # run = run shell command
 # i f: always() = do step ALWAYS, even if previous steps failed, to clean anyway
+# i f: failure() = do step only if some prev steps failed
