@@ -22,6 +22,13 @@ jobs:
 
       - name: Check PHP connects to database
         run: docker compose exec -T php php check_db.php
+
+      - name: Check Nginx serves static page
+        run: curl -f http://localhost/ | grep "Notes App"
+        # curl -f = fail: if response is 400+, then it has non zero exit code
+
+      - name: Check Nginx passes /api/notes to PHP-FPM
+        run: 'curl -f http://localhost/api/notes | grep "Method: GET"'
         
       - name: Show logs on failure
         if: failure()
