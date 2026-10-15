@@ -15,14 +15,14 @@ services:
       timeout: 3s
       retries: 10 #how may failes in a row to set status unhealthy
     ports:
-      - "5432:5432" #port on my pc : port in container -> to reach it from outside
+      - "127.0.0.1:5432:5432" #port on my pc : port in container -> to reach it from outside
     volumes:
       - pgdata:/var/lib/postgresql/data #pgdata lives separately from container
 
       # if there is no pgdata(means tables) - it goes to storage and creates table
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql # [from where] : [to where= default folder which image checks first time in initialisation]
   php:
-    build: ./backend # says to compose not to download image, but to build it from dockerfile located in ./backend
+    build: ./backend # says to compose (not to download) image, but to build it from dockerfile located in ./backend
     environment:
       DB_HOST: db
       DB_PORT: "5432"
@@ -31,10 +31,23 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./backend:/var/www/html
-      # [folder in host]:[folder in container]
+      # [folder in host]:[folder in container] - it's called "bind mount"
     depends_on:
       db:
         condition: service_healthy
+
+  nginx:
+    image: nginx:1.27
+    ports:
+      - "80:80"
+      # {port at host(localhost)}:{port in container(which nginx listens)}
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro # {}:{}:{mode}
+      - ./frontend:/usr/share/nginx/html:ro
+      # we replace content from our volume {left one} to containers dir {right}
+      # ro = read-only, to secure from overwriting 
+    depends_on:
+      - php
     
 
 # volumes=tom, it's list of attached folders, - starts the list
