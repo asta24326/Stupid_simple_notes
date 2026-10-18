@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [dev, main]
+    branches: [production, dev]
 
 jobs:
   db-smoke-test:
@@ -27,9 +27,58 @@ jobs:
         run: curl -f http://localhost/ | grep "Notes App"
         # curl -f = fail: if response is 400+, then it has non zero exit code
 
-      - name: Check Nginx passes /api/notes to PHP-FPM
-        run: 'curl -f http://localhost/api/notes | grep "Method: GET"'
-        
+      - name: Check Frontend assets are served
+        run: | 
+          for fileName in style.css app.js; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/$fileName)
+            echo "$fileName: $code"
+            test "$code" = "200"
+          done
+
+      - name: Check GET /api/notes returns 200
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/notes)
+          echo "status: $code"
+          test "$code" = "200"
+      # run: | = block of several commands in lines
+      # code=$(..) = exec command inside and store inside variable "code"
+      # -s = silent, no progress outpus
+      # -o /dev/null = takes response's body and throw away(/dev/null)
+      # -w "%{http_code}" = write-out: after requset, print status code
+      # test "$code" = "200" - compare [exit code] to 200, if same = 0, or 1
+
+      - name: Check POST /api/notes returns 201
+        run: |
+          code=$(curl -s -o body.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"text":"CI note"}' http://localhost/api/notes)
+          cat body.json
+          test "$code" = "201"
+          grep -q '"text":"CI note"' body.json
+      # grep -q = quiet, doesn't print, returns 0, if line is found
+      # -o == --output -> means "take output and save somewhere"
+
+      - name: Check new note appears in GET
+        run: curl -s http://localhost/api/notes | grep -q '"text":"CI note"'
+
+      - name: Check broken JSON return 400
+        run: |
+          code=$(curl -s -o body.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"text":"broken"' http://localhost/api/notes)
+          cat body.json
+          test "$code" = "400"
+          grep -q '"error"' body.json
+
+      - name: Check missing text field returns 400
+        run: |
+          code=$(curl -s -o body.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}' http://localhost/api/notes)
+          cat body.json
+          test "$code" = "400"
+          grep -q '"error"' body.json
+
       - name: Show logs on failure
         if: failure()
         run: docker compose logs
@@ -37,7 +86,6 @@ jobs:
       - name: Stop containers
         if: always()
         run: docker compose down -v
-
 
 
 # Syntax

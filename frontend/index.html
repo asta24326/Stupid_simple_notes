@@ -1,12 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Notes App</title>
-  </head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notes App</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
 
-  <body>
-    <h1>Notes App</h1>
-    <p>Static page served by Nginx</p>
-  </body>
+    <header class="toolbar">
+      <button id="new-note-btn" type="button">New note</button>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <ul id="notes-list"></ul>
+      </aside>
+
+      <main class="note-view">
+        <div id="note-date"></div>
+        <textarea id="note-text" placeholder="Start typing..."></textarea>
+        <button id="save-btn" type="button">Save</button>
+        <p id="error-message"></p>
+      </main>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
 </html>
