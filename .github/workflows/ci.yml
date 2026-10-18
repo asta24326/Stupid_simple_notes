@@ -27,6 +27,14 @@ jobs:
         run: curl -f http://localhost/ | grep "Notes App"
         # curl -f = fail: if response is 400+, then it has non zero exit code
 
+      - name: Check Frontend assets are served
+        run: | 
+          for fileName in style.css app.js; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/$fileName)
+            echo "$fileName: $code"
+            test "$code" = "200"
+          done
+
       - name: Check GET /api/notes returns 200
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/notes)
@@ -71,8 +79,6 @@ jobs:
           test "$code" = "400"
           grep -q '"error"' body.json
 
-          
-
       - name: Show logs on failure
         if: failure()
         run: docker compose logs
@@ -80,7 +86,6 @@ jobs:
       - name: Stop containers
         if: always()
         run: docker compose down -v
-
 
 
 # Syntax
