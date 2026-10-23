@@ -28,6 +28,7 @@ Browser ──▶ Nginx (port 80) ──▶ PHP-FPM (port 9000) ──▶ Postgr
 ## Run locally
 
 Requirements: Docker with Docker Compose.
+The first start takes a minute: Docker downloads the images.
 
 ```bash
 git clone https://github.com/asta24326/Stupid_simple_notes

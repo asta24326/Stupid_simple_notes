@@ -43,9 +43,9 @@ function updateSaveButton() {
   const textInField = noteText.value;
 
   if (textInField === '') {
-    saveBtn.Disabled = true;
+    saveBtn.disabled = true;
   } else {
-    saveBtn.Disabled = false;
+    saveBtn.disabled = false;
   }
 }
 
