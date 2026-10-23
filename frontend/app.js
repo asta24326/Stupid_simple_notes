@@ -37,6 +37,19 @@ function clearError() {
 }
 
 /*
+  to change Save button state
+*/
+function updateSaveButton() {
+  const textInField = noteText.value;
+
+  if (textInField === '') {
+    saveBtn.Disabled = true;
+  } else {
+    saveBtn.Disabled = false;
+  }
+}
+
+/*
  * parseDate
  * Turns the created_at string from the API into a JS Date.
  * Postgres returns "2026-10-17 18:02:44.048033": UTC time without a
@@ -68,6 +81,7 @@ function getTitle(text) {
  */
 function renderList() {
   notesList.replaceChildren();
+  // replaceChildren = clear list of already rendered notes
 
   for (const note of notes) {
     const item = document.createElement('li');
@@ -124,6 +138,7 @@ function startNewNote() {
   noteText.readOnly = false;
   noteDate.textContent = '';
   saveBtn.hidden = false;
+  updateSaveButton();
   clearError();
   renderList();
   noteText.focus();
@@ -182,7 +197,7 @@ async function saveNote() {
   } catch (err) {
     showError('Request failed: ' + err.message);
   } finally {
-    saveBtn.disabled = false;
+    updateSaveButton();
   }
 }
 
@@ -196,6 +211,7 @@ async function saveNote() {
 // ---------------------------------------------------------------
 newNoteBtn.addEventListener('click', startNewNote);
 saveBtn.addEventListener('click', saveNote);
+noteText.addEventListener('input', updateSaveButton);
 
 loadNotes()
   .then(startNewNote)
