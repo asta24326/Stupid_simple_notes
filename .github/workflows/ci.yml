@@ -44,7 +44,7 @@ jobs:
       # code=$(..) = exec command inside and store inside variable "code"
       # -s = silent, no progress outpus
       # -o /dev/null = takes response's body and throw away(/dev/null)
-      # -w "%{http_code}" = write-out: after requset, print status code
+      # -w "%{http_code}" = write-out: after request, print status code
       # test "$code" = "200" - compare [exit code] to 200, if same = 0, or 1
 
       - name: Check POST /api/notes returns 201
@@ -75,6 +75,34 @@ jobs:
           code=$(curl -s -o body.json -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -d '{}' http://localhost/api/notes)
+          cat body.json
+          test "$code" = "400"
+          grep -q '"error"' body.json
+
+      - name: Check empty text returns 400
+        run: |
+          code=$(curl -s -o body.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"text":""}' http://localhost/api/notes)
+          cat body.json
+          test "$code" = "400"
+          grep -q '"error"' body.json
+
+      - name: Check text of 1000 characters is accepted
+        run: |
+          long_text=$(printf 'a%.0s' {1..1000})
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"$long_text\"}" http://localhost/api/notes)
+          echo "status: $code"
+          test "$code" = "201"
+
+      - name: Check text of 1001 characters returns 400
+        run: |
+          long_text=$(printf 'a%.0s' {1..1001})
+          code=$(curl -s -o body.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"$long_text\"}" http://localhost/api/notes)
           cat body.json
           test "$code" = "400"
           grep -q '"error"' body.json
