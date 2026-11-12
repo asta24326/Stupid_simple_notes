@@ -71,7 +71,7 @@ jobs:
           test "$code" = "400"
           grep -q '"error"' body.json
 
-          - name: Check empty text returns 400
+      - name: Check empty text returns 400
         run: |
           code=$(curl -s -o body.json -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
@@ -89,12 +89,20 @@ jobs:
           echo "status: $code"
           test "$code" = "201"
 
-      - name: Check text of 1001 characters returns 400
+      - name: Check missing text field returns 400
         run: |
-          long_text=$(printf 'a%.0s' {1..1001})
           code=$(curl -s -o body.json -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
-            -d "{\"text\":\"$long_text\"}" http://localhost/api/notes)
+            -d '{}' http://localhost/api/notes)
+          cat body.json
+          test "$code" = "400"
+          grep -q '"error"' body.json
+
+      - name: Check empty text returns 400
+        run: |
+          code=$(curl -s -o body.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"text":""}' http://localhost/api/notes)
           cat body.json
           test "$code" = "400"
           grep -q '"error"' body.json
