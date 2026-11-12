@@ -1,5 +1,12 @@
 # Informational commands in postgres
 
+# to enter into db container
+docker compose exec db psql -U admin -d notes_app
+# syntax:
+psql = client Postgres
+-U = used
+-d = database name
+
 # Describe users
 \du
 # syntax:
