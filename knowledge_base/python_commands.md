@@ -1,0 +1,8 @@
+# to run the server
+python3 -m uvicorn app.main:app --reload
+# syntax:
+# -m = run a module, not a file
+# app.main:app = import the module app.main(the file app/main.py) and take the variable app from it
+# --reload = restart the server when files change(development only)
+
+
