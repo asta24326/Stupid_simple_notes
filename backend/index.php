@@ -16,6 +16,10 @@
   // if require failed, execution stops there
   // include - another option, but only if block is optional, otherwise we won't see an error if file isn't available
 
+  const MAX_TEXT_LENGTH = 1000;
+  // syntax:
+  // just a constant to use system
+
 
   // Error handling
   function sendError(int $status, string $message): never {
@@ -91,7 +95,7 @@
         // 512 = max depth
         // JSON_THROW_ON_ERROR = in case of error -> throw exception
       } catch (JsonException) {
-        sendError(400, 'Invalid JSON');
+        sendError(400, 'Invalid JSON.');
       }
 
       // Step 3 - check data form
@@ -99,8 +103,20 @@
         // syntax:
         // !isset($data['text']) - if key 'text' exists and not null
         // !is_string($data['text']) - if key 'text's value is not a string
-        sendError(400, 'Field [text] is required and must be a string');
+        sendError(400, 'Field [text] is required and must be a string.');
       }
+
+      // Check if input(text field) is empty
+      if ($data['text'] === '') {
+        sendError(400, 'Field [text] must not be empty.');
+      }
+
+      // Check if input(text field) is bigger that max_size
+      if (mb_strlen($data['text']) > MAX_TEXT_LENGTH) {
+        sendError(400, 'Field [text] must be at most ' . MAX_TEXT_LENGTH . ' characters.');
+      }
+      // syntax:
+      // mb_strlen = myltibite string length, counts chars and not bytes
 
       // Step 4 - INSERT in DB
       $pdo = getPdo();
@@ -122,13 +138,13 @@
     }
 
     header('Allow: GET, POST');
-    sendError(405, 'Method is not allowed');
+    sendError(405, 'Method is not allowed.');
     // syntax:
     // Allow = standard header for 405 error
     // 405 = Method Not Allowed, path exists but mehtod doesn't
   } catch (Throwable $e) {
     error_log($e::class . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    sendError(500, 'Internal server error');
+    sendError(500, 'Internal server error.');
     // syntax:
     // Throwable = catch ANY type of exception: Exception, Error and etc
     // $e::class = class name of the error
