@@ -9,6 +9,11 @@ python3 -m uvicorn app.main:app --reload
 # go to backend folder first, where .venv folder is
 source .venv/bin/activate
 
+# Test with pytest
+python3 -m pytest -v
+# sytnax:
+# -m pytest = run module pytest, not the command
+# -v = verbose - full description wiht each line to each test
 
 
 
