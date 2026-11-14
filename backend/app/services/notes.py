@@ -17,6 +17,13 @@ class NoteService:
         """Show all notes, newest first"""
         return self._repository.list_notes()
     
+    def get_note(self, note_id: int) -> Note:
+        """Show one note; NoteNotFoundError if it is missing."""
+        note = self._repository.get_note(note_id)
+        if note is None:
+            raise NoteNotFoundError(f"Note {note_id} not found")
+        return note
+    
     def create_note(self, text: str) -> Note:
         """Add a note after checking its text"""
         self._validate_text(text)

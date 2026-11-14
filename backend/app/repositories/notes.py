@@ -14,6 +14,10 @@ class NotesRepository(ABC):
         """Return all Notes, newest first"""
 
     @abstractmethod
+    def get_note(self, note_id: int) -> Note | None:
+        """Return one note by note_id; None if doesn't exist"""
+
+    @abstractmethod
     def create_note(self, text: str) -> Note:
         """Store a new Note and return it with
             generated id and timestamp"""

@@ -63,6 +63,22 @@ def test_list_notes_returns_newest_first():
 
     assert [note.text for note in notes] == ["second", "first"]
 
+def test_get_note_returns_the_note():
+    """An existing note can be fetched by its id."""
+    service = make_service()
+    created_note = service.create_note("find me")
+
+    found_note = service.get_note(created_note.id)
+
+    assert found_note.text == "find me"
+
+def test_get_note_raises_when_note_is_missing():
+    """Asking for an id that does not exist is a NoteNotFoundError."""
+    service = make_service()
+
+    with pytest.raises(NoteNotFoundError):
+        service.get_note(99)
+
 def test_update_note_changes_text():
     """Updating an existing note replaces its text and keeps its id."""
     service = make_service()

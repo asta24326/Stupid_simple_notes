@@ -14,6 +14,14 @@ class FakeNotesRepository(NotesRepository):
         """Return all notes, newest first (a copy, so tests cannot corrupt the store). list() - creates a new list"""
         return list(reversed(self._notes))
     
+
+    def get_note(self, note_id: int) -> Note:
+        """Return one stored note; None if there is no such note"""
+        for note in self._notes:
+            if note.id == note_id:
+                return note
+        return None
+    
     def create_note(self, text: str) -> Note:
         """Store a Note and hand out the id and timestamp, as real db would"""
         new_note = Note(id=self._next_id, text=text, created_at=datetime.now())
