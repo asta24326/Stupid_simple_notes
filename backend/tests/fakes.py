@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.models.note import Noteфыва
+from app.models.note import Note
 from app.repositories.notes import NotesRepository
 
 
