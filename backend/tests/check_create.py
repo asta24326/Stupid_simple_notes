@@ -5,6 +5,7 @@ from app.repositories.postgres_notes import PostgresNotesRepository
 
 settings = Settings()
 
+
 def open_connection() -> psycopg.Connection:
     return psycopg.connect(
         host=settings.postgres_host,
@@ -13,6 +14,7 @@ def open_connection() -> psycopg.Connection:
         user=settings.postgres_user,
         password=settings.postgres_password,
     )
+
 
 connection = open_connection()
 repository = PostgresNotesRepository(connection)

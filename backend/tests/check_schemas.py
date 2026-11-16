@@ -9,4 +9,3 @@ response = NoteResponse.model_validate(note)
 
 print(response)
 print(response.model_dump_json())
-
