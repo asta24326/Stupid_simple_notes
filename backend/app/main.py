@@ -12,6 +12,7 @@ import psycopg
 from fastapi import FastAPI
 
 from app.config import Settings
+from app.handlers.errors import register_error_handlers
 from app.handlers.notes import get_notes_service, router
 from app.repositories.postgres_notes import PostgresNotesRepository
 from app.services.notes import NotesService
@@ -36,6 +37,7 @@ def provide_notes_service() -> Iterator[NotesService]:
 
 
 app = FastAPI()
+register_error_handlers(app)
 
 # Everytime a handler asks for get_notes_service, FastAPI calls provide_notes_service instead
 # dependency_overrides - means we replace call of get_notes_service with provide_notes_service

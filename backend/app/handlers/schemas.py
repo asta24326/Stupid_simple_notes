@@ -17,3 +17,9 @@ class NoteOut(BaseModel):
     id: int
     text: str
     created_at: datetime
+
+
+class NoteIn(BaseModel):
+    """Body of create and update requests: the text of a note"""
+
+    text: str
