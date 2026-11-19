@@ -1,29 +1,47 @@
+# Itearator: type hint for functions that use `yield` (generators)
+# psycopg: PostgreSQL driver, used to open one connection per request
+# FastAPI: Web framework; creates the application object
+# Settings: Reads database parameters from the env
+# get_notes_service(): empty provider handlers asks for; router: the group of /api/notes routes
+# PostgresNotesRepository: the layer that runs SQL (receives the connection)
+# NotesService: the business rules layer (receives the repository)
+
+from collections.abc import Iterator
+
+import psycopg
 from fastapi import FastAPI
-# take the class FastAPI from the "fastapi" package
-from pydantic import BaseModel
+
+from app.config import Settings
+from app.handlers.errors import register_error_handlers
+from app.handlers.notes import get_notes_service, router
+from app.repositories.postgres_notes import PostgresNotesRepository
+from app.services.notes import NotesService
+
+settings = Settings()
+
+
+def provide_notes_service() -> Iterator[NotesService]:
+    """Open a connection for one request, build the layers on it, close it afterwards"""
+    connection = psycopg.connect(
+        host=settings.postgres_host,
+        port=settings.postgres_port,
+        dbname=settings.postgres_db,
+        user=settings.postgres_user,
+        password=settings.postgres_password,
+    )
+    try:
+        repository = PostgresNotesRepository(connection)
+        yield NotesService(repository)
+    finally:
+        connection.close()
+
 
 app = FastAPI()
-# create an application object. name matters, as the start command refers to it
+register_error_handlers(app)
 
-notes = []
+# Everytime a handler asks for get_notes_service, FastAPI calls provide_notes_service instead
+# dependency_overrides - means we replace call of get_notes_service with provide_notes_service
+app.dependency_overrides[get_notes_service] = provide_notes_service
 
-class CreateNoteRequest(BaseModel):
-    text: str
-
-@app.get("/api/notes")
-# decorator: it registers the function below as a handler for GET method, path '/api/notes'
-def list_notes():
-    return notes
-
-@app.post("/api/notes", status_code=201)
-# register POST method handler, set custom success code to 201
-def create_note(request_body: CreateNoteRequest) -> dict:
-    new_note = {"id": len(notes) + 1, "text": request_body.text}
-    notes.append(new_note)
-    return new_note
-
-
-
-
-
-
+# Attach the /api/notes routes from handlers/notes.py to the application
+app.include_router(router)
