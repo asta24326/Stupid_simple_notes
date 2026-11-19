@@ -4,8 +4,8 @@ from app.models.note import Note
 from app.repositories.notes import NotesRepository
 
 
-class PostgresNotesRepository(NotesRepository):
-    """Stores notes in PostgreSQL: SQL only, no business rules."""
+class DbNotesRepository(NotesRepository):
+    """Stores notes in the database: SQL only, no business rules."""
 
     def __init__(self, connection: psycopg.Connection) -> None:
         """Take an open connection from outside(dependency injection)."""
@@ -74,7 +74,7 @@ class PostgresNotesRepository(NotesRepository):
             return None
         return self._row_to_note(row)
 
-    def delete_note(self, note_id: id) -> bool:
+    def delete_note(self, note_id: int) -> bool:
         """Delete note; return bool False if failed."""
         cursor = self._connection.cursor()
         try:

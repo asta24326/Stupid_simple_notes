@@ -3,7 +3,7 @@
 # FastAPI: Web framework; creates the application object
 # Settings: Reads database parameters from the env
 # get_notes_service(): empty provider handlers asks for; router: the group of /api/notes routes
-# PostgresNotesRepository: the layer that runs SQL (receives the connection)
+# DbNotesRepository: the layer that runs SQL (receives the connection)
 # NotesService: the business rules layer (receives the repository)
 
 from collections.abc import Iterator
@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from app.config import Settings
 from app.handlers.errors import register_error_handlers
 from app.handlers.notes import get_notes_service, router
-from app.repositories.postgres_notes import PostgresNotesRepository
+from app.repositories.db.notes import DbNotesRepository
 from app.services.notes import NotesService
 
 settings = Settings()
@@ -30,7 +30,7 @@ def provide_notes_service() -> Iterator[NotesService]:
         password=settings.postgres_password,
     )
     try:
-        repository = PostgresNotesRepository(connection)
+        repository = DbNotesRepository(connection)
         yield NotesService(repository)
     finally:
         connection.close()
