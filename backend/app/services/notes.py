@@ -3,6 +3,9 @@ from app.models.note import Note
 from app.repositories.notes import NotesRepository
 
 MAX_TEXT_LENGTH = 10000
+# Page size of the notes list: used when the client sends no limit, and the largest allowed value
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 100
 
 
 class NotesService:
@@ -14,9 +17,9 @@ class NotesService:
         """Take the storage from outside, so it can be mocked"""
         self._repository = repository
 
-    def list_notes(self) -> list[Note]:
+    def list_notes(self, limit: int = DEFAULT_PAGE_SIZE, offset: int = 0) -> list[Note]:
         """Show all notes, newest first"""
-        return self._repository.list_notes()
+        return self._repository.list_notes(limit, offset)
 
     def get_note(self, note_id: int) -> Note:
         """Show one note; NoteNotFoundError if it is missing."""

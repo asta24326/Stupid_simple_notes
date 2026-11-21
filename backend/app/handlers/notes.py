@@ -1,9 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.handlers.schemas import NoteIn, NoteOut
-from app.services.notes import NotesService
+from app.services.notes import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, NotesService
 
 router = APIRouter(prefix="/api/notes")
 
@@ -18,10 +18,17 @@ NotesServiceDependency = Annotated[NotesService, Depends(get_notes_service)]
 
 
 @router.get("", response_model=list[NoteOut])
-def list_notes(service: NotesServiceDependency):
-    """Show all notes, newest first."""
+def list_notes(
+    service: NotesServiceDependency,
+    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = DEFAULT_PAGE_SIZE,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    """Show one page of notes, newest first."""
     # syntax: "before calling this function, call the provider and place it to the service var"
-    notes = service.list_notes()
+    # syntax: ge = greater or equal, le = less or equal
+    # so that's how we limit out input data from browser
+
+    notes = service.list_notes(limit, offset)
     return notes
 
 
