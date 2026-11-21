@@ -134,3 +134,30 @@ def test_delete_note_raises_when_note_is_missing():
 
     with pytest.raises(NoteNotFoundError):
         service.delete_note(99)
+
+
+def test_list_notes_returns_the_requested_page():
+    """limit and offset cut one page out of the newest-first list."""
+    service = make_service()
+    for number in range(5):
+        service.create_note(f"note {number}")
+
+    page = service.list_notes(limit=2, offset=1)
+
+    assert [note.text for note in page] == ["note 3", "note 2"]
+
+
+def test_list_notes_offset_beyond_the_end_gives_an_empty_page():
+    """Asking for a page past the last note is not an error."""
+    service = make_service()
+    service.create_note("only one")
+
+    assert service.list_notes(limit=10, offset=5) == []
+
+
+def test_list_notes_without_arguments_uses_the_default_page():
+    """The old call without arguments still returns the notes."""
+    service = make_service()
+    service.create_note("first")
+
+    assert len(service.list_notes()) == 1

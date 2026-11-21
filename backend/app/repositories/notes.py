@@ -12,8 +12,8 @@ class NotesRepository(ABC):
     logic, it only store and load notes."""
 
     @abstractmethod
-    def list_notes(self) -> list[Note]:
-        """Return all Notes, newest first."""
+    def list_notes(self, limit: int, offset: int) -> list[Note]:
+        """Return all Notes, newest first, skip offset and return at most 'limit' amount."""
 
     @abstractmethod
     def get_note(self, note_id: int) -> Note | None:
