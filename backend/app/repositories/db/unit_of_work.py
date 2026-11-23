@@ -1,5 +1,6 @@
 import psycopg
-from backend.app.unit_of_work_interface import UnitOfWorkInterface
+
+from app.unit_of_work_interface import UnitOfWorkInterface
 
 
 class DbUnitOfWork(UnitOfWorkInterface):
