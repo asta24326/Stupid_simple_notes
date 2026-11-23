@@ -15,6 +15,9 @@ from app.config import Settings
 from app.handlers.errors import register_error_handlers
 from app.handlers.notes import get_notes_service, router
 from app.repositories.db.notes import DbNotesRepository
+
+# DbUnitOfWork: commit and rollback of the same connection the repository works on
+from app.repositories.db.unit_of_work import DbUnitOfWork
 from app.services.notes import NotesService
 
 settings = Settings()
@@ -31,7 +34,8 @@ def provide_notes_service() -> Iterator[NotesService]:
     )
     try:
         repository = DbNotesRepository(connection)
-        yield NotesService(repository)
+        unit_of_work = DbUnitOfWork(connection)
+        yield NotesService(repository, unit_of_work)
     finally:
         connection.close()
 

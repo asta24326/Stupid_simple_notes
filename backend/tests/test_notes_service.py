@@ -2,12 +2,12 @@ import pytest
 
 from app.errors import EmptyTextError, NoteNotFoundError, TextTooLongError
 from app.services.notes import MAX_TEXT_LENGTH, NotesService
-from tests.fakes import FakeNotesRepository
+from tests.fakes import FakeNotesRepository, FakeUnitOfWork
 
 
 def make_service() -> NotesService:
-    """Build a service on a fresh repository, so every test starts clean"""
-    return NotesService(FakeNotesRepository())
+    """Build a service on a fresh repository and a fake transaction boundary."""
+    return NotesService(FakeNotesRepository(), FakeUnitOfWork())
 
 
 def test_create_note_returns_note_with_text():
@@ -134,3 +134,49 @@ def test_delete_note_raises_when_note_is_missing():
 
     with pytest.raises(NoteNotFoundError):
         service.delete_note(99)
+
+
+def test_create_note_commits_once():
+    """A successful write is one commited transaction."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    service.create_note("saved")
+
+    assert unit_of_work.commits == 1
+    assert unit_of_work.rollbacks == 0
+
+
+def test_invalid_text_does_not_open_a_transaction():
+    """Text is checked before the block, so a rejected note touches no transaction."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    with pytest.raises(EmptyTextError):
+        service.create_note("")
+
+    assert unit_of_work.commits == 0
+    assert unit_of_work.rollbacks == 0
+
+
+def test_update_of_a_missing_note_rolls_back():
+    """NoteNotFoundError raised inside the block ends with roolback."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    with pytest.raises(NoteNotFoundError):
+        service.update_note(99, "new")
+
+    assert unit_of_work.commits == 0
+    assert unit_of_work.rollbacks == 1
+
+
+def test_delete_of_a_missing_note_rolls_back():
+    """The same for delete."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    with pytest.raises(NoteNotFoundError):
+        service.delete_note(99)
+
+    assert unit_of_work.rollbacks == 1

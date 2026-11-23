@@ -15,7 +15,7 @@ from app.handlers.notes import get_notes_service, router
 from app.services.notes import NotesService
 
 # FakeNotesRepository: notes in a list, no database
-from tests.fakes import FakeNotesRepository
+from tests.fakes import FakeNotesRepository, FakeUnitOfWork
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def client() -> TestClient:
     app = FastAPI()
     register_error_handlers(app)
 
-    service = NotesService(FakeNotesRepository())
+    service = NotesService(FakeNotesRepository(), FakeUnitOfWork())
     app.dependency_overrides[get_notes_service] = lambda: service
     app.include_router(router)
 
