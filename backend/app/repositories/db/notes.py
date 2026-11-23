@@ -11,11 +11,14 @@ class DbNotesRepository(NotesRepositoryInterface):
         """Take an open connection from outside(dependency injection)."""
         self._connection = connection
 
-    def list_notes(self) -> list[Note]:
+    def list_notes(self, limit: int, offset: int) -> list[Note]:
         """Read all notes from the table, newest first."""
         cursor = self._connection.cursor()
         try:
-            cursor.execute("SELECT id, text, created_at FROM notes ORDER BY id DESC")
+            cursor.execute(
+                "SELECT id, text, created_at FROM notes ORDER BY id DESC LIMIT %s OFFSET %s",
+                (limit, offset),
+            )
             rows = cursor.fetchall()
         finally:
             cursor.close()

@@ -15,9 +15,10 @@ class FakeNotesRepository(NotesRepositoryInterface):
         self._notes: list[Note] = []
         self._next_id = 1
 
-    def list_notes(self) -> list[Note]:
+    def list_notes(self, limit: int, offset: int) -> list[Note]:
         """Return all notes, newest first (a copy, so tests cannot corrupt the store). list() - creates a new list"""
-        return list(reversed(self._notes))
+        newest_first = list(reversed(self._notes))
+        return newest_first[offset : offset + limit]
 
     def get_note(self, note_id: int) -> Note:
         """Return one stored note; None if there is no such note"""

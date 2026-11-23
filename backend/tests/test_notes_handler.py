@@ -98,3 +98,42 @@ def test_delete_returns_204_and_the_note_is_gone(client):
 
     assert delete_response.status_code == 204
     assert read_response.status_code == 404
+
+
+def test_list_returns_the_requested_page(client):
+    """Limit and offset in the address cut a page out of the newest-first list."""
+    for number in range(5):
+        client.post("/api/notes", json={"text": f"note {number}"})
+
+    response = client.get("/api/notes", params={"limit": 2, "offset": 1})
+
+    assert response.status_code == 200
+    assert [note["text"] for note in response.json()] == ["note 3", "note 2"]
+
+
+def test_list_without_parameters_returns_the_notes(client):
+    """The old call wothout parameters still works"""
+    client.post("/api/notes", json={"text": "first"})
+
+    response = client.get("/api/notes")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+def test_list_with_limit_zero_returns_422(client):
+    response = client.get("/api/notes", params={"limit": 0})
+
+    assert response.status_code == 422
+
+
+def test_list_with_limit_above_the_maximum_returns_422(client):
+    response = client.get("/api/notes", params={"limit": 101})
+
+    assert response.status_code == 422
+
+
+def test_list_with_negative_offset_return_422(client):
+    response = client.get("/api/notes", params={"offset": -1})
+
+    assert response.status_code == 422
