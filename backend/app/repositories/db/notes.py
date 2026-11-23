@@ -1,10 +1,10 @@
 import psycopg
 
 from app.models.note import Note
-from app.repositories.notes import NotesRepository
+from app.repositories.notes_interface import NotesRepositoryInterface
 
 
-class DbNotesRepository(NotesRepository):
+class DbNotesRepository(NotesRepositoryInterface):
     """Stores notes in the database: SQL only, no business rules."""
 
     def __init__(self, connection: psycopg.Connection) -> None:
@@ -54,7 +54,6 @@ class DbNotesRepository(NotesRepository):
                 (text,),
             )
             row = cursor.fetchone()
-            self._connection.commit()
         finally:
             cursor.close()
 
@@ -69,7 +68,6 @@ class DbNotesRepository(NotesRepository):
                 (text, note_id),
             )
             row = cursor.fetchone()
-            self._connection.commit()
         finally:
             cursor.close()
 
@@ -82,7 +80,6 @@ class DbNotesRepository(NotesRepository):
         cursor = self._connection.cursor()
         try:
             cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
-            self._connection.commit()
 
             if cursor.rowcount == 1:
                 return True

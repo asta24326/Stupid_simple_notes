@@ -1,10 +1,13 @@
 from datetime import datetime
 
 from app.models.note import Note
-from app.repositories.notes import NotesRepository
+from app.repositories.notes_interface import NotesRepositoryInterface
+
+# UnitOfWork: the interface the fake implements
+from app.unit_of_work_interface import UnitOfWorkInterface
 
 
-class FakeNotesRepository(NotesRepository):
+class FakeNotesRepository(NotesRepositoryInterface):
     """In-memory repository for tests: same contract as the real one, but with no database"""
 
     def __init__(self) -> None:
@@ -47,3 +50,20 @@ class FakeNotesRepository(NotesRepository):
                 return True
 
         return False
+
+
+class FakeUnitOfWork(UnitOfWorkInterface):
+    """Counts commits and rollbacks, so tests can check them without a database."""
+
+    def __init__(self) -> None:
+        """Start with nothing commited and nothing rolled back"""
+        self.commits = 0
+        self.rollbacks = 0
+
+    def commit(self) -> None:
+        """Remember that the block was committed"""
+        self.commits += 1
+
+    def rollback(self) -> None:
+        """Remember that the block was rolled back"""
+        self.rollbacks += 1
