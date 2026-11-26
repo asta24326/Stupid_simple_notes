@@ -1,8 +1,11 @@
+import logging
+
 from app.errors import EmptyTextError, NoteNotFoundError, TextTooLongError
 from app.models.note import Note
 from app.repositories.notes_interface import NotesRepositoryInterface
 from app.unit_of_work_interface import UnitOfWorkInterface
 
+logger: logging.Logger = logging.getLogger(__name__)
 MAX_TEXT_LENGTH = 10000
 # Page size of the notes list: used when the client sends no limit, and the largest allowed value
 DEFAULT_PAGE_SIZE = 50
@@ -34,7 +37,9 @@ class NotesService:
         """Add a note after checking its text; the insert in one transaction"""
         self._validate_text(text)
         with self._unit_of_work:
-            return self._repository.create_note(text)
+            created_note = self._repository.create_note(text)
+        logger.info("Note created id=%s", created_note.id)
+        return created_note
 
     def update_note(self, note_id: int, text: str) -> Note:
         """Change the text of an existing note; NoteNotFoundError if it doesn't exist"""
@@ -44,7 +49,8 @@ class NotesService:
             updated_note = self._repository.update_note(note_id, text)
             if updated_note is None:
                 raise NoteNotFoundError(f"Note {note_id} not found")
-            return updated_note
+        logger.info("Note updated id=%s", note_id)
+        return updated_note
 
     def delete_note(self, note_id: int) -> None:
         """Remove a note; NoteNotFoundError if it is missing"""
@@ -52,6 +58,7 @@ class NotesService:
             was_deleted = self._repository.delete_note(note_id)
             if not was_deleted:
                 raise NoteNotFoundError(f"Note {note_id} not found")
+        logger.info("Note deleted id=%s", note_id)
 
     def _validate_text(self, text: str) -> None:
         """Text rules shared by create and update: not empty, max_chars 10000 chars"""

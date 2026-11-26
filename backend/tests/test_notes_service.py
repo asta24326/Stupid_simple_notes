@@ -1,3 +1,6 @@
+# Standard library: logging levels (logging.INFO)
+import logging
+
 import pytest
 
 from app.errors import EmptyTextError, NoteNotFoundError, TextTooLongError
@@ -207,3 +210,19 @@ def test_list_notes_without_arguments_uses_the_default_page():
     service.create_note("first")
 
     assert len(service.list_notes()) == 1
+
+
+def test_create_note_logs_event_without_note_text(caplog: pytest.LogCaptureFixture) -> None:
+    """Creating a note logs its id, and the private notest text never reaches the log"""
+    service = make_service()
+
+    # Capture records of level INFO and above while the block runs
+    with caplog.at_level(logging.INFO):
+        created_note = service.create_note("private note text")
+
+    service_records = [record for record in caplog.records if record.name == "app.services.notes"]
+
+    assert len(service_records) == 1
+    assert service_records[0].levelno == logging.INFO
+    assert service_records[0].getMessage() == f"Note created id={created_note.id}"
+    assert "private note text" not in caplog.text
