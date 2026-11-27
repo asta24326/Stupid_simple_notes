@@ -51,12 +51,22 @@ class FakeNotesRepository(NotesRepositoryInterface):
 
         return False
 
+    def delete_notes(self, note_ids: list[int]) -> list[int]:
+        """Remove the stored notes with these ids; return the ids that were really remove."""
+        deleted_ids = []
+        # Loop over a copy; removing from a list while looping over it skips elements
+        for note in self._notes[:]:
+            if note.id in note_ids:
+                self._notes.remove(note)
+                deleted_ids.append(note.id)
+        return deleted_ids
+
 
 class FakeUnitOfWork(UnitOfWorkInterface):
     """Counts commits and rollbacks, so tests can check them without a database."""
 
     def __init__(self) -> None:
-        """Start with nothing commited and nothing rolled back"""
+        """Start with nothing committed and nothing rolled back"""
         self.commits = 0
         self.rollbacks = 0
 

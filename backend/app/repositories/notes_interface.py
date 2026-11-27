@@ -32,3 +32,9 @@ class NotesRepositoryInterface(ABC):
     @abstractmethod
     def delete_note(self, note_id: int) -> bool:
         """Delete a note. Return True if it existed, False otherwise."""
+
+    @abstractmethod
+    def delete_notes(self, note_ids: list[int]) -> list[int]:
+        """Soft delete several notes with one command.
+        Return the ids that were really deleted: ids that do not exist
+        or already deleted are not in the result."""
