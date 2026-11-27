@@ -97,7 +97,30 @@ Rules:
 - The baseline `0001_create_notes.sql` uses `IF NOT EXISTS`, so it also works on a database created before migrations existed.
 - CI runs `make migrate` before the tests that need the database.
 
- 
+## Deleting notes
+
+Notes are never removed from the table by the API. `DELETE` sets the column
+`deleted_at` to the current time (**soft delete**), and every read query
+filters `WHERE deleted_at IS NULL`, so a deleted note behaves like a missing
+one: `404` on `GET`, `PUT` and a repeated `DELETE`.
+
+**Why soft delete.** A mistaken delete can be fixed by hand in the database,
+and the data stays available for audit. The cost is that rows pile up, so a
+purge (physical removal of old rows) has to be done separately.
+
+**Alternatives.**
+
+| Approach | When it fits |
+|---|---|
+| Hard delete (`DELETE FROM`) | no need to recover, privacy requires real erasure |
+| Soft delete (`deleted_at`) | recovery or audit matters, tables are small or medium (this project) |
+| Archiving (move old rows to an archive table or detach old partitions) | very large tables, old data is almost never read |
+
+**Batch delete.** `POST /api/notes/batch-delete` with `{"ids": [1, 2, 3]}`
+(1 to 100 ids) deletes all of them in one transaction: if any id does not
+exist, the answer is `404` and nothing is deleted. `POST` is used because
+`DELETE` with a body is not reliable through proxies.
+
 ## API
  
 Base URL: `http://localhost:8000/api`. Requests and responses use JSON.
@@ -108,7 +131,8 @@ Base URL: `http://localhost:8000/api`. Requests and responses use JSON.
 | `GET` | `/api/notes/{id}` | `200` | one note |
 | `POST` | `/api/notes` | `201` | create a note |
 | `PUT` | `/api/notes/{id}` | `200` | replace the text of a note |
-| `DELETE` | `/api/notes/{id}` | `204` | delete a note, no response body |
+| `DELETE` | `/api/notes/{id}` | `204` | soft delete a note, no response body |
+| `POST` | `/api/notes/batch-delete` | `204` | soft delete up to 100 notes in one transaction (all or none), no response body |
  
 A note looks like this:
  
