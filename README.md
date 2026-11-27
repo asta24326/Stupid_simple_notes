@@ -56,6 +56,7 @@ cd Stupid_simple_notes
 cp .env.example .env
 make setup   # first time only: create backend/.venv, install packages, enable git hooks
 make db      # start PostgreSQL in Docker
+make migrate # create the tables
 make run     # start the API with auto-reload
 ```
  
@@ -70,6 +71,32 @@ make test    # run the tests
 make fix     # auto-format and fix lint errors
 make check   # lint, format check and tests (run before every commit)
 ```
+
+## Database migrations
+
+The schema is versioned: every change is a numbered SQL file in `db/migrations/`, and one command applies the files that are not applied yet.
+
+```bash
+make db        # start PostgreSQL
+make migrate   # apply new migrations
+```
+
+The runner (`backend/app/migrate.py`) remembers what it has applied in the table `schema_migrations`. A second run does nothing (`Nothing to apply`). Each migration runs in one transaction together with its record in that table, so a failed migration leaves the database unchanged and stops the run.
+
+### Add a migration
+
+1. Create the next file in `db/migrations/`: a four-digit number, an underscore and a short description, for example `0002_add_title_to_notes.sql`.
+2. Write the SQL change in it, one topic per file.
+3. Run `make migrate` and check the result.
+4. Commit the file together with the code that needs it.
+
+Rules:
+
+- Never edit a migration that has been applied anywhere; fix mistakes with a new migration.
+- There are no rollback files: changes only go forward.
+- The baseline `0001_create_notes.sql` uses `IF NOT EXISTS`, so it also works on a database created before migrations existed.
+- CI runs `make migrate` before the tests that need the database.
+
  
 ## API
  
