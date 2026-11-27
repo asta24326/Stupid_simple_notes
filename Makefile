@@ -26,7 +26,7 @@
 # ============================================================
 
 # Targets are commands, not files: always run them
-.PHONY: setup db run fix lint test check
+.PHONY: setup db run fix lint test check migrate
 
 # Put the project venv first in PATH for every command that make runs,
 # so python3 is the venv's python3 and no manual activation is needed
@@ -40,7 +40,11 @@ setup:
 
 # Start the PostgreSQL container
 db:
-	docker compose up -d db
+	docker compose up -d --wait db
+
+# Apply the database migrations that are not applied yet (the database must be running: make db)
+migrate:
+	cd backend && python3 -m app.migrate
 
 # Run the API with auto-reload on http://127.0.0.1:8000
 run:
