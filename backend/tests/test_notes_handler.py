@@ -4,7 +4,7 @@ import logging
 import pytest
 from fastapi import FastAPI
 
-# TestClient: calls the app wihtout a real server
+# TestClient: calls the app without a real server
 from fastapi.testclient import TestClient
 
 # register_error_handlers: maps domain errors to HTTP responses (the code under test)
@@ -13,11 +13,27 @@ from app.handlers.errors import register_error_handlers
 # get_notes_service: the empty provider the handlers ask for; router: the /api/notes routes
 from app.handlers.notes import get_notes_service, router
 
+# MAX_BATCH_SIZE: the id limit of one batch request, used to build a too long list
+from app.handlers.schemas import MAX_BATCH_SIZE
+
 # NotesService: the business rules layer, built here on a fake repository
 from app.services.notes import NotesService
 
 # FakeNotesRepository: notes in a list, no database
 from tests.fakes import FakeNotesRepository, FakeUnitOfWork
+
+
+@pytest.fixture
+def client() -> TestClient:
+    """Build the app the way main.py does, but on a fake repository."""
+    app = FastAPI()
+    register_error_handlers(app)
+
+    service = NotesService(FakeNotesRepository(), FakeUnitOfWork())
+    app.dependency_overrides[get_notes_service] = lambda: service
+    app.include_router(router)
+
+    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.mark.parametrize(
@@ -30,6 +46,8 @@ from tests.fakes import FakeNotesRepository, FakeUnitOfWork
         ("GET", "/api/notes?limit=0", None, 422),
         ("PUT", "/api/notes/99", {"text": "new"}, 404),
         ("DELETE", "/api/notes/99", None, 404),
+        ("POST", "/api/notes/batch-delete", {"ids": [99]}, 404),
+        ("POST", "/api/notes/batch-delete", {"ids": []}, 422),
     ],
 )
 def test_client_errors_are_logged_as_warning(client, caplog, method, url, json_body, expected_status):
@@ -47,17 +65,24 @@ def test_client_errors_are_logged_as_warning(client, caplog, method, url, json_b
     assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
 
 
-@pytest.fixture
-def client() -> TestClient:
-    """Build the app the way main.py does, but on a fake repository."""
-    app = FastAPI()
-    register_error_handlers(app)
+@pytest.mark.parametrize(
+    "json_body",
+    [
+        {"ids": []},  # empty list
+        {"ids": [0]},  # zero is not a positive id
+        {"ids": [-1]},  # negative id
+        {"ids": "abc"},  # a string instead of a list
+        {"ids": [1, "abc"]},  # one bad item among good ones
+        {"ids": list(range(1, MAX_BATCH_SIZE + 2))},  # one id more than the limit
+        {},  # field "ids" is missing
+    ],
+)
+def test_batch_delete_rejects_invalid_body(client, json_body):
+    """Every body that breaks the schema gets 422 with our single error format."""
+    response = client.post("/api/notes/batch-delete", json=json_body)
 
-    service = NotesService(FakeNotesRepository(), FakeUnitOfWork())
-    app.dependency_overrides[get_notes_service] = lambda: service
-    app.include_router(router)
-
-    return TestClient(app, raise_server_exceptions=False)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid request data"}
 
 
 def test_create_returns_201_and_the_note(client):
@@ -130,6 +155,35 @@ def test_delete_returns_204_and_the_note_is_gone(client):
     assert read_response.status_code == 404
 
 
+def test_batch_delete_returns_204_and_the_notes_are_gone(client):
+    """Batch delete answers 204 without a body, and only the requested notes disappear."""
+    first_note = client.post("/api/notes", json={"text": "first"}).json()
+    second_note = client.post("/api/notes", json={"text": "second"}).json()
+    third_note = client.post("/api/notes", json={"text": "third"}).json()
+
+    response = client.post(
+        "/api/notes/batch-delete",
+        json={"ids": [first_note["id"], second_note["id"]]},
+    )
+    list_response = client.get("/api/notes")
+
+    assert response.status_code == 204
+    assert [note["id"] for note in list_response.json()] == [third_note["id"]]
+
+
+def test_batch_delete_with_a_missing_id_returns_404(client):
+    """One unknown id fails the whole request and the message names it."""
+    existing_note = client.post("/api/notes", json={"text": "exists"}).json()
+
+    response = client.post(
+        "/api/notes/batch-delete",
+        json={"ids": [existing_note["id"], 99]},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Notes not found: [99]"
+
+
 def test_list_returns_the_requested_page(client):
     """Limit and offset in the address cut a page out of the newest-first list."""
     for number in range(5):
@@ -142,7 +196,7 @@ def test_list_returns_the_requested_page(client):
 
 
 def test_list_without_parameters_returns_the_notes(client):
-    """The old call wothout parameters still works"""
+    """The old call without parameters still works"""
     client.post("/api/notes", json={"text": "first"})
 
     response = client.get("/api/notes")

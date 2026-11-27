@@ -140,7 +140,7 @@ def test_delete_note_raises_when_note_is_missing():
 
 
 def test_create_note_commits_once():
-    """A successful write is one commited transaction."""
+    """A successful write is one committed transaction."""
     unit_of_work = FakeUnitOfWork()
     service = NotesService(FakeNotesRepository(), unit_of_work)
 
@@ -163,7 +163,7 @@ def test_invalid_text_does_not_open_a_transaction():
 
 
 def test_update_of_a_missing_note_rolls_back():
-    """NoteNotFoundError raised inside the block ends with roolback."""
+    """NoteNotFoundError raised inside the block ends with rollback."""
     unit_of_work = FakeUnitOfWork()
     service = NotesService(FakeNotesRepository(), unit_of_work)
 
@@ -213,7 +213,7 @@ def test_list_notes_without_arguments_uses_the_default_page():
 
 
 def test_create_note_logs_event_without_note_text(caplog: pytest.LogCaptureFixture) -> None:
-    """Creating a note logs its id, and the private notest text never reaches the log"""
+    """Creating a note logs its id, and the private notes text never reaches the log"""
     service = make_service()
 
     # Capture records of level INFO and above while the block runs
@@ -226,3 +226,74 @@ def test_create_note_logs_event_without_note_text(caplog: pytest.LogCaptureFixtu
     assert service_records[0].levelno == logging.INFO
     assert service_records[0].getMessage() == f"Note created id={created_note.id}"
     assert "private note text" not in caplog.text
+
+
+def test_delete_notes_removes_all_requested_notes():
+    """Deleting several existing notes removes exactly them in one committed transaction."""
+    # We need our own unit of work object to read its counters after the call
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+    first_note = service.create_note("first")
+    second_note = service.create_note("second")
+    third_note = service.create_note("third")
+    # create_note also commits, so remember the counters before the call under test
+    commits_before = unit_of_work.commits
+    rollbacks_before = unit_of_work.rollbacks
+
+    service.delete_notes([first_note.id, second_note.id])
+
+    # Only the third note is left
+    assert [note.id for note in service.list_notes()] == [third_note.id]
+    # One new commit and no new rollback
+    assert unit_of_work.commits == commits_before + 1
+    assert unit_of_work.rollbacks == rollbacks_before
+
+
+def test_delete_notes_with_a_missing_id_rolls_back_and_names_it():
+    """If any id is missing, the whole batch fails: one rollback, no commit."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+    existing_note = service.create_note("exists")
+    commits_before = unit_of_work.commits
+
+    # "as error_info" keeps the caught exception inside an ExceptionInfo object
+    with pytest.raises(NoteNotFoundError) as error_info:
+        service.delete_notes([existing_note.id, 99])
+
+    # error_info.value is the exception object; str() gives its message
+    assert str(error_info.value) == "Notes not found: [99]"
+    assert unit_of_work.commits == commits_before
+    assert unit_of_work.rollbacks == 1
+
+
+def test_delete_notes_ignores_repeated_ids():
+    """The same id twice is not an error: the note is deleted once."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+    created_note = service.create_note("to delete")
+    commits_before = unit_of_work.commits
+
+    service.delete_notes([created_note.id, created_note.id])
+
+    assert service.list_notes() == []
+    assert unit_of_work.commits == commits_before + 1
+    assert unit_of_work.rollbacks == 0
+
+
+def test_delete_notes_logs_event_without_note_text(caplog: pytest.LogCaptureFixture) -> None:
+    """Batch delete logs the deleted ids once, and the note texts never reach the log."""
+    service = make_service()
+    first_note = service.create_note("private first")
+    second_note = service.create_note("private second")
+
+    # Start capturing only now, so the log lines of create_note are not counted
+    with caplog.at_level(logging.INFO):
+        service.delete_notes([second_note.id, first_note.id])
+
+    service_records = [record for record in caplog.records if record.name == "app.services.notes"]
+
+    assert len(service_records) == 1
+    assert service_records[0].levelno == logging.INFO
+    # ids are logged sorted, whatever order the caller used
+    assert service_records[0].getMessage() == f"Notes deleted ids={[first_note.id, second_note.id]}"
+    assert "private" not in caplog.text
