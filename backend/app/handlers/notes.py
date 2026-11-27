@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from app.handlers.schemas import NoteIn, NoteOut
+from app.handlers.schemas import BatchDeleteRequest, NoteIn, NoteOut
 from app.services.notes import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, NotesService
 
 router = APIRouter(prefix="/api/notes")
@@ -34,7 +34,7 @@ def list_notes(
 
 @router.get("/{note_id}", response_model=NoteOut)
 def get_note(note_id: int, service: NotesServiceDependency):
-    """Show one note; 404 if doens't exist."""
+    """Show one note; 404 if doesn't exist."""
     note = service.get_note(note_id)
     return note
 
@@ -48,7 +48,7 @@ def create_note(body: NoteIn, service: NotesServiceDependency):
 
 @router.put("/{note_id}", response_model=NoteOut)
 def update_note(note_id: int, body: NoteIn, service: NotesServiceDependency):
-    """Replace the text of a note; 404 if doens't exist."""
+    """Replace the text of a note; 404 if doesn't exist."""
     note = service.update_note(note_id, body.text)
     return note
 
@@ -57,3 +57,9 @@ def update_note(note_id: int, body: NoteIn, service: NotesServiceDependency):
 def delete_note(note_id: int, service: NotesServiceDependency):
     """Delete a note; 404 if doesn't exist"""
     service.delete_note(note_id)
+
+
+@router.post("/batch-delete", status_code=204)
+def batch_delete_notes(body: BatchDeleteRequest, service: NotesServiceDependency):
+    """Delete several notes in one transaction: all or none; 404 if any doesn't exist."""
+    service.delete_notes(body.ids)
