@@ -18,7 +18,7 @@ class NotesService:
     problems with domain errors. Knows nothing about HTTP and SQL"""
 
     def __init__(self, repository: NotesRepositoryInterface, unit_of_work: UnitOfWorkInterface) -> None:
-        """Take the storage and the transaction boundary from outside (dependecy injection)"""
+        """Take the storage and the transaction boundary from outside (dependency injection)"""
         self._repository = repository
         self._unit_of_work = unit_of_work
 
@@ -59,6 +59,19 @@ class NotesService:
             if not was_deleted:
                 raise NoteNotFoundError(f"Note {note_id} not found")
         logger.info("Note deleted id=%s", note_id)
+
+    def delete_notes(self, notes_ids: list[int]) -> None:
+        """Delete several notes in one transaction: all of them or none; NoteNotFoundError if any is missing."""
+        # set() drops repeated ids, sorted() makes the order (and the error message) stable
+        unique_ids = sorted(set(notes_ids))
+
+        with self._unit_of_work:
+            deleted_ids = self._repository.delete_notes(unique_ids)
+            # set difference: ids we were asked to delete minus ids that were really deleted
+            missing_ids = sorted(set(unique_ids) - set(deleted_ids))
+            if missing_ids:
+                raise NoteNotFoundError(f"Notes not found: {missing_ids}")
+        logger.info("Notes deleted ids=%s", unique_ids)
 
     def _validate_text(self, text: str) -> None:
         """Text rules shared by create and update: not empty, max_chars 10000 chars"""

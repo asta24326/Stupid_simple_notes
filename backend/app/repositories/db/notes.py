@@ -16,7 +16,7 @@ class DbNotesRepository(NotesRepositoryInterface):
         cursor = self._connection.cursor()
         try:
             cursor.execute(
-                "SELECT id, text, created_at FROM notes ORDER BY id DESC LIMIT %s OFFSET %s",
+                "SELECT id, text, created_at FROM notes WHERE deleted_at IS NULL ORDER BY id DESC LIMIT %s OFFSET %s",
                 (limit, offset),
             )
             rows = cursor.fetchall()
@@ -34,7 +34,7 @@ class DbNotesRepository(NotesRepositoryInterface):
         cursor = self._connection.cursor()
         try:
             cursor.execute(
-                "SELECT id, text, created_at FROM notes WHERE id = %s",
+                "SELECT id, text, created_at FROM notes WHERE id = %s AND deleted_at IS NULL",
                 (note_id,),
             )
             row = cursor.fetchone()
@@ -64,7 +64,7 @@ class DbNotesRepository(NotesRepositoryInterface):
         cursor = self._connection.cursor()
         try:
             cursor.execute(
-                "UPDATE notes SET text = %s WHERE id = %s RETURNING id, text, created_at",
+                "UPDATE notes SET text = %s WHERE id = %s AND deleted_at IS NULL RETURNING id, text, created_at",
                 (text, note_id),
             )
             row = cursor.fetchone()
@@ -76,16 +76,45 @@ class DbNotesRepository(NotesRepositoryInterface):
         return self._row_to_note(row)
 
     def delete_note(self, note_id: int) -> bool:
-        """Delete note; return bool False if failed."""
+        """Soft delete note; mark as deleted and keep the row.
+        Return false if it doesn't exist or is already deleted."""
         cursor = self._connection.cursor()
         try:
-            cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
+            cursor.execute("UPDATE notes SET deleted_at = now() WHERE id = %s AND deleted_at IS NULL", (note_id,))
 
             if cursor.rowcount == 1:
                 return True
             return False
         finally:
             cursor.close()
+
+    def delete_notes(self, note_ids: list[int]) -> list[int]:
+        """Mark several notes as deleted with one command; Return the ids that were really marked as deleted."""
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(
+                "UPDATE notes SET deleted_at = now() WHERE id = ANY(%s) AND deleted_at IS NULL RETURNING id",
+                (note_ids,),
+            )
+            rows = cursor.fetchall()
+        finally:
+            cursor.close()
+
+        return [row[0] for row in rows]
+
+    # Syntax hint: why (note_ids,) and not (note_ids)
+    #
+    # The second argument of cursor.execute() is a CONTAINER of values, one value per %s.
+    # A comma makes a tuple; brackets alone only group an expression.
+    #
+    #   note_ids     = [1, 2, 3]       the list itself
+    #   (note_ids)   = [1, 2, 3]       brackets only group, still the same list;
+    #                                  execute reads it as THREE values for one %s -> error
+    #   (note_ids,)  = ([1, 2, 3],)    a tuple with ONE element, and that element is the list;
+    #                                  execute reads it as ONE value for one %s -> OK
+    #
+    # psycopg sends the list to PostgreSQL as one array ($1 = '{1,2,3}'),
+    # and "id = ANY(%s)" checks the id against every element of that array.
 
     def _row_to_note(self, row: tuple) -> Note:
         """Turn one table row (id, text, created_at) into a domain model Note."""
