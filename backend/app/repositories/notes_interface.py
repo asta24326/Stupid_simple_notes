@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from app.models.note import Note
 
 
-class NotesRepository(ABC):
+class NotesRepositoryInterface(ABC):
     """Is interface
     Storage contract for Notes
     The service layer depends on this interface only,

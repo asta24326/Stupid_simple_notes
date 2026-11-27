@@ -1,13 +1,16 @@
+# Standard library: logging levels (logging.INFO)
+import logging
+
 import pytest
 
 from app.errors import EmptyTextError, NoteNotFoundError, TextTooLongError
 from app.services.notes import MAX_TEXT_LENGTH, NotesService
-from tests.fakes import FakeNotesRepository
+from tests.fakes import FakeNotesRepository, FakeUnitOfWork
 
 
 def make_service() -> NotesService:
-    """Build a service on a fresh repository, so every test starts clean"""
-    return NotesService(FakeNotesRepository())
+    """Build a service on a fresh repository and a fake transaction boundary."""
+    return NotesService(FakeNotesRepository(), FakeUnitOfWork())
 
 
 def test_create_note_returns_note_with_text():
@@ -136,6 +139,52 @@ def test_delete_note_raises_when_note_is_missing():
         service.delete_note(99)
 
 
+def test_create_note_commits_once():
+    """A successful write is one commited transaction."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    service.create_note("saved")
+
+    assert unit_of_work.commits == 1
+    assert unit_of_work.rollbacks == 0
+
+
+def test_invalid_text_does_not_open_a_transaction():
+    """Text is checked before the block, so a rejected note touches no transaction."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    with pytest.raises(EmptyTextError):
+        service.create_note("")
+
+    assert unit_of_work.commits == 0
+    assert unit_of_work.rollbacks == 0
+
+
+def test_update_of_a_missing_note_rolls_back():
+    """NoteNotFoundError raised inside the block ends with roolback."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    with pytest.raises(NoteNotFoundError):
+        service.update_note(99, "new")
+
+    assert unit_of_work.commits == 0
+    assert unit_of_work.rollbacks == 1
+
+
+def test_delete_of_a_missing_note_rolls_back():
+    """The same for delete."""
+    unit_of_work = FakeUnitOfWork()
+    service = NotesService(FakeNotesRepository(), unit_of_work)
+
+    with pytest.raises(NoteNotFoundError):
+        service.delete_note(99)
+
+    assert unit_of_work.rollbacks == 1
+
+
 def test_list_notes_returns_the_requested_page():
     """limit and offset cut one page out of the newest-first list."""
     service = make_service()
@@ -161,3 +210,19 @@ def test_list_notes_without_arguments_uses_the_default_page():
     service.create_note("first")
 
     assert len(service.list_notes()) == 1
+
+
+def test_create_note_logs_event_without_note_text(caplog: pytest.LogCaptureFixture) -> None:
+    """Creating a note logs its id, and the private notest text never reaches the log"""
+    service = make_service()
+
+    # Capture records of level INFO and above while the block runs
+    with caplog.at_level(logging.INFO):
+        created_note = service.create_note("private note text")
+
+    service_records = [record for record in caplog.records if record.name == "app.services.notes"]
+
+    assert len(service_records) == 1
+    assert service_records[0].levelno == logging.INFO
+    assert service_records[0].getMessage() == f"Note created id={created_note.id}"
+    assert "private note text" not in caplog.text

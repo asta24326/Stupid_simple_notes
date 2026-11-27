@@ -1,4 +1,6 @@
 # pytest: test runner; fixture marks a function that prepares objects for tests
+import logging
+
 import pytest
 from fastapi import FastAPI
 
@@ -15,7 +17,34 @@ from app.handlers.notes import get_notes_service, router
 from app.services.notes import NotesService
 
 # FakeNotesRepository: notes in a list, no database
-from tests.fakes import FakeNotesRepository
+from tests.fakes import FakeNotesRepository, FakeUnitOfWork
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "json_body", "expected_status"),
+    [
+        ("POST", "/api/notes", {"text": ""}, 400),
+        ("POST", "/api/notes", {"text": "a" * 10001}, 400),
+        ("POST", "/api/notes", {"text": 5}, 422),
+        ("GET", "/api/notes/99", None, 404),
+        ("GET", "/api/notes?limit=0", None, 422),
+        ("PUT", "/api/notes/99", {"text": "new"}, 404),
+        ("DELETE", "/api/notes/99", None, 404),
+    ],
+)
+def test_client_errors_are_logged_as_warning(client, caplog, method, url, json_body, expected_status):
+    """Mistakes of the client give 400/404 and a WARNING, never an ERROR."""
+    with caplog.at_level(logging.INFO):
+        response = client.request(method, url, json=json_body)
+
+    assert response.status_code == expected_status
+
+    handler_records = [record for record in caplog.records if record.name == "app.handlers.errors"]
+    assert len(handler_records) == 1
+    assert handler_records[0].levelno == logging.WARNING
+
+    # Nothing at ERROR level or above: the client's mistake is not a server failure
+    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
 
 
 @pytest.fixture
@@ -24,7 +53,7 @@ def client() -> TestClient:
     app = FastAPI()
     register_error_handlers(app)
 
-    service = NotesService(FakeNotesRepository())
+    service = NotesService(FakeNotesRepository(), FakeUnitOfWork())
     app.dependency_overrides[get_notes_service] = lambda: service
     app.include_router(router)
 
@@ -58,6 +87,7 @@ def test_create_with_wrong_type_returns_422(client):
     response = client.post("/api/notes", json={"text": 5})
 
     assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid request data"}
 
 
 def test_get_returns_the_note(client):
@@ -137,3 +167,14 @@ def test_list_with_negative_offset_return_422(client):
     response = client.get("/api/notes", params={"offset": -1})
 
     assert response.status_code == 422
+
+
+def test_validation_error_does_not_log_user_input(client, caplog):
+    """The rejected value is echoed by FastAPI's error data, but must not reach the log."""
+    with caplog.at_level(logging.INFO):
+        # A list instead of a string: 422, and the list holds a recognizable marker
+        response = client.post("/api/notes", json={"text": ["private note text"]})
+
+    assert response.status_code == 422
+    assert "private note text" not in response.text
+    assert "private note text" not in caplog.text
